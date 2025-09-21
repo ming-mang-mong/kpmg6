@@ -82,7 +82,16 @@ COLUMN_MAPPING = {
     '혜택수혜율_B0M': '혜택수혜율_B0M',
 }
 
-DATA_URL = "https://drive.google.com/uc?export=download&id=16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k&confirm=t"
+# Google Drive 파일 ID
+FILE_ID = "16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k"
+
+# 다양한 다운로드 URL 시도
+DOWNLOAD_URLS = [
+    f"https://drive.google.com/uc?export=download&id={FILE_ID}&confirm=t",
+    f"https://drive.usercontent.google.com/download?id={FILE_ID}&export=download&confirm=t",
+    f"https://drive.google.com/uc?export=download&id={FILE_ID}",
+    f"https://drive.usercontent.google.com/download?id={FILE_ID}&export=download"
+]
 
 
 def generate_sample_data() -> pd.DataFrame:
@@ -123,99 +132,100 @@ def load_data() -> pd.DataFrame:
     데이터 로드 및 기본 전처리
     Google Drive에서만 데이터 로드 (더미 데이터 없음)
     """
-    df = None
+    import requests
+    import os
+    import zipfile
+    from io import BytesIO
     
-    # 방법 1: gdown을 사용한 효율적인 다운로드
-    try:
-        import gdown
-        import os
-        
-        # 임시 파일로 다운로드
-        temp_file = "temp_data_file"
-        gdown.download(DATA_URL, temp_file, quiet=True)
-        
-        # 파일 타입 감지 및 처리
-        if os.path.exists(temp_file):
-            # 파일 확장자 확인
+    df = None
+    last_error = None
+    
+    # 여러 URL 시도
+    for i, url in enumerate(DOWNLOAD_URLS):
+        try:
+            print(f"시도 {i+1}: {url}")
+            
+            # 세션 생성
+            session = requests.Session()
+            response = session.get(url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            # Content-Type 확인
+            content_type = response.headers.get('content-type', '').lower()
+            print(f"Content-Type: {content_type}")
+            
+            # HTML 응답인지 확인
+            if 'text/html' in content_type:
+                print("HTML 응답 감지, 다음 URL 시도")
+                continue
+            
+            # 바이러스 스캔 경고 페이지 확인
+            content_preview = response.content[:1000].decode('utf-8', errors='ignore')
+            if 'virus scan' in content_preview.lower() or 'virus warning' in content_preview.lower():
+                print("바이러스 스캔 경고 페이지 감지, 다음 URL 시도")
+                continue
+            
+            # 파일 다운로드
+            temp_file = f"temp_data_{i}.csv"
+            with open(temp_file, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            # 파일 크기 확인
+            file_size = os.path.getsize(temp_file)
+            print(f"다운로드된 파일 크기: {file_size} bytes")
+            
+            if file_size < 1000:  # 너무 작으면 HTML 페이지일 가능성
+                print("파일이 너무 작음, 다음 URL 시도")
+                os.remove(temp_file)
+                continue
+            
+            # 파일 타입 감지 및 처리
             with open(temp_file, 'rb') as f:
                 header = f.read(4)
             
-            # ZIP 파일인지 확인
             if header.startswith(b'PK'):
-                import zipfile
-                
+                # ZIP 파일 처리
+                print("ZIP 파일 감지")
                 with zipfile.ZipFile(temp_file, 'r') as zip_file:
-                    # CSV 파일 찾기
                     csv_files = [f for f in zip_file.namelist() if f.endswith('.csv')]
                     if not csv_files:
                         raise Exception("ZIP 파일에서 CSV 파일을 찾을 수 없습니다.")
                     
-                    # 첫 번째 CSV 파일 읽기
                     csv_file = csv_files[0]
+                    print(f"CSV 파일 발견: {csv_file}")
                     
                     with zip_file.open(csv_file) as f:
                         df = pd.read_csv(f, low_memory=False, encoding='utf-8')
             else:
                 # CSV 파일 직접 읽기
+                print("CSV 파일 직접 읽기")
                 df = pd.read_csv(temp_file, low_memory=False, encoding='utf-8')
             
             # 임시 파일 삭제
             os.remove(temp_file)
-        else:
-            raise Exception("파일 다운로드에 실패했습니다.")
             
-    except Exception as e1:
-        # 방법 2: requests를 사용한 스트리밍 다운로드
-        try:
-            import requests
-            
-            session = requests.Session()
-            response = session.get(DATA_URL, stream=True)
-            response.raise_for_status()
-            
-            # Content-Type 확인
-            content_type = response.headers.get('content-type', '')
-            if 'text/html' in content_type:
-                raise Exception("HTML response received")
-            
-            # 임시 파일로 저장
-            temp_file = "temp_data_stream.csv"
-            with open(temp_file, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            # 파일 읽기
-            df = pd.read_csv(temp_file, low_memory=False, encoding='utf-8')
-            
-            # 임시 파일 삭제
-            import os
-            os.remove(temp_file)
-        except Exception as e2:
-            # 방법 3: 직접 다운로드 URL 생성
-            try:
-                # Google Drive 직접 다운로드 URL
-                direct_url = "https://drive.usercontent.google.com/download?id=16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k&export=download&confirm=t"
+            if df is not None and not df.empty:
+                print(f"✅ 데이터 로드 성공! {len(df)}행, {len(df.columns)}열")
+                break
+            else:
+                print("데이터가 비어있음, 다음 URL 시도")
+                continue
                 
-                response = requests.get(direct_url, stream=True)
-                response.raise_for_status()
-                
-                # 임시 파일로 저장
-                temp_file = "temp_data.csv"
-                with open(temp_file, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                
-                df = pd.read_csv(temp_file, low_memory=False, encoding='utf-8')
-                
-                # 임시 파일 삭제
-                import os
-                os.remove(temp_file)
-            except Exception as e3:
-                # 모든 방법 실패 시 오류 발생
-                raise Exception("Google Drive에서 데이터를 로드할 수 없습니다. 모든 다운로드 방법이 실패했습니다.")
+        except Exception as e:
+            last_error = e
+            print(f"❌ URL {i+1} 실패: {str(e)}")
+            if os.path.exists(f"temp_data_{i}.csv"):
+                os.remove(f"temp_data_{i}.csv")
+            continue
     
     if df is None or df.empty:
-        raise Exception("데이터 로드에 실패했습니다. Google Drive 파일을 확인해주세요.")
+        error_msg = f"Google Drive에서 데이터를 로드할 수 없습니다.\n"
+        error_msg += f"시도한 URL 수: {len(DOWNLOAD_URLS)}\n"
+        error_msg += f"마지막 오류: {str(last_error) if last_error else '알 수 없음'}\n"
+        error_msg += f"파일 ID: {FILE_ID}\n"
+        error_msg += "Google Drive 링크를 확인해주세요: https://drive.google.com/file/d/16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k/view?usp=sharing"
+        raise Exception(error_msg)
     
     # 중복 인덱스 제거
     df = df.reset_index(drop=True)
