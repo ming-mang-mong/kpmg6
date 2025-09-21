@@ -355,7 +355,7 @@ def compute_kpis(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     
     # 세그먼트별 집계
-    kpi_df = df.groupby('Segment', observed=False).agg({
+    kpi_df = df.groupby('Segment', observed=True).agg({
         'ID': 'nunique',
         '총이용금액_B0M': 'sum',
         '총이용건수_B0M': 'sum',
@@ -542,7 +542,7 @@ def download_data_button(df: pd.DataFrame, filename: str = "dashboard_data.csv")
 def calculate_kpi_metrics(df: pd.DataFrame) -> pd.DataFrame:
     """KPI 메트릭 계산"""
     # 기본 집계
-    kpi_data = df.groupby('Segment').agg({
+    kpi_data = df.groupby('Segment', observed=True).agg({
         'ID': 'nunique',
         '총이용금액_B0M': ['sum', 'mean'],
         '총이용건수_B0M': ['sum', 'mean'],

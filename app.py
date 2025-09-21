@@ -209,7 +209,7 @@ def render_kpi_analysis(df: pd.DataFrame):
 def calculate_kpi_metrics(df: pd.DataFrame) -> pd.DataFrame:
     """KPI 메트릭 계산"""
     # 기본 집계
-    kpi_data = df.groupby('Segment').agg({
+    kpi_data = df.groupby('Segment', observed=True).agg({
         'ID': 'nunique',
         '총이용금액_B0M': ['sum', 'mean'],
         '총이용건수_B0M': ['sum', 'mean'],
@@ -1553,7 +1553,7 @@ def main():
             for segment in SEGMENT_ORDER:
                 if segment in segment_counts.index:
                     count = segment_counts[segment]
-                    pct = (count / len(filtered_df)) * 100
+                    pct = (count / len(filtered_df)) * 100 if len(filtered_df) > 0 else 0
                     st.write(f"**{segment}:** {count:,}명 ({pct:.1f}%)")
                 else:
                     st.write(f"**{segment}:** 데이터 없음")
