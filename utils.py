@@ -10,98 +10,38 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# GPU/CPU 디바이스 설정
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    torch = None
-    TORCH_AVAILABLE = False
+# Streamlit Cloud 호환성을 위한 디바이스 설정
+TORCH_AVAILABLE = False  # Streamlit Cloud에서는 PyTorch 사용 안함
 
 # 전역 변수
 _CACHED_DATA = None
 _DEVICE = None
 
 def _get_device():
-    """GPU 사용 가능 여부 확인 및 디바이스 설정"""
+    """CPU 디바이스 설정 (Streamlit Cloud 호환)"""
     global _DEVICE
     if _DEVICE is None:
-        if TORCH_AVAILABLE and torch.cuda.is_available():
-            _DEVICE = torch.device('cuda')
-            print("🚀 GPU 사용: CUDA")
-        else:
-            _DEVICE = torch.device('cpu') if TORCH_AVAILABLE else 'cpu'
-            print("💻 CPU 사용")
+        _DEVICE = "cpu"
     return _DEVICE
 
 def get_device_info():
-    """현재 디바이스 정보 반환"""
+    """현재 디바이스 정보 반환 (Streamlit Cloud 호환)"""
     device = _get_device()
-    if TORCH_AVAILABLE and torch.cuda.is_available():
-        try:
-            return {
-                'device': device,
-                'device_name': torch.cuda.get_device_name(0),
-                'device_count': torch.cuda.device_count(),
-                'memory_total': torch.cuda.get_device_properties(0).total_memory / 1024**3,  # GB
-                'memory_allocated': torch.cuda.memory_allocated(0) / 1024**3,  # GB
-                'memory_cached': torch.cuda.memory_reserved(0) / 1024**3,  # GB
-                'cuda_version': torch.version.cuda,
-                'torch_version': torch.__version__
-            }
-        except Exception as e:
-            return {
-                'device': device,
-                'device_name': f'CUDA Error: {str(e)}',
-                'device_count': 0,
-                'memory_total': 0,
-                'memory_allocated': 0,
-                'memory_cached': 0,
-                'cuda_version': 'Unknown',
-                'torch_version': torch.__version__ if TORCH_AVAILABLE else 'Not installed'
-            }
-    else:
-        return {
-            'device': device,
-            'device_name': 'CPU',
-            'device_count': 0,
-            'memory_total': 0,
-            'memory_allocated': 0,
-            'memory_cached': 0,
-            'cuda_version': 'N/A',
-            'torch_version': torch.__version__ if TORCH_AVAILABLE else 'Not installed'
-        }
+    return {
+        'device': device,
+        'device_name': 'CPU (Streamlit Cloud)',
+        'device_count': 0,
+        'memory_total': 0,
+        'memory_allocated': 0,
+        'memory_cached': 0,
+        'cuda_version': 'N/A',
+        'torch_version': 'Not installed'
+    }
 
 def gpu_accelerated_computation(data: np.ndarray, operation: str = 'matrix_multiply') -> np.ndarray:
-    """GPU 가속 계산 예시"""
-    if not TORCH_AVAILABLE:
-        st.warning("⚠️ PyTorch가 설치되지 않았습니다. CPU로 계산합니다.")
-        return data
-    
-    device = _get_device()
-    
-    try:
-        # NumPy 배열을 PyTorch 텐서로 변환
-        tensor = torch.from_numpy(data.astype(np.float32)).to(device)
-        
-        if operation == 'matrix_multiply':
-            # 행렬 곱셈 (GPU 가속)
-            result = torch.mm(tensor, tensor.T)
-        elif operation == 'sum':
-            # 합계 계산
-            result = torch.sum(tensor)
-        elif operation == 'mean':
-            # 평균 계산
-            result = torch.mean(tensor)
-        else:
-            result = tensor
-        
-        # 결과를 CPU로 다시 이동하여 NumPy 배열로 변환
-        return result.cpu().numpy()
-        
-    except Exception as e:
-        st.error(f"❌ GPU 계산 중 오류 발생: {str(e)}")
-        return data
+    """CPU 계산 (Streamlit Cloud 호환)"""
+    # Streamlit Cloud에서는 CPU만 사용
+    return data
 
 # 상수 정의
 SEGMENT_ORDER = ['A', 'B', 'C', 'D', 'E']

@@ -8,7 +8,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date
-from utils import load_data, apply_filters, SEGMENT_ORDER, SEGMENT_COLORS, format_number, get_device_info, _get_device, gpu_accelerated_computation, TORCH_AVAILABLE
+from utils import load_data, apply_filters, SEGMENT_ORDER, SEGMENT_COLORS, format_number, get_device_info, _get_device, gpu_accelerated_computation
 
 # --- NAV 정의 ---
 NAV = {
@@ -1517,10 +1517,7 @@ def main():
                 st.caption(f"메모리 사용률: {memory_usage:.1f}%")
             else:
                 st.info(f"💻 **CPU 사용:** {device_info['device_name']}")
-                if TORCH_AVAILABLE:
-                    st.write(f"**PyTorch 버전:** {device_info['torch_version']}")
-                else:
-                    st.warning("⚠️ PyTorch가 설치되지 않았습니다.")
+                st.write(f"**PyTorch 버전:** {device_info['torch_version']}")
             
             st.divider()
             
@@ -1596,10 +1593,10 @@ def render_risk_delinquency(df: pd.DataFrame):
         st.warning("데이터가 없습니다.")
         return
     
-    # GPU 가속 옵션
+    # 필터 옵션
     col1, col2, col3 = st.columns([2, 1, 1])
     with col2:
-        use_gpu = st.toggle("🚀 GPU 가속 사용", key="delinquency_gpu", disabled=not TORCH_AVAILABLE)
+        st.info("💻 CPU 사용 (Streamlit Cloud)")
     with col3:
         high_risk_toggle = st.toggle("고위험군만 표시", key="delinquency_high_risk")
     
@@ -1610,17 +1607,17 @@ def render_risk_delinquency(df: pd.DataFrame):
     else:
         filtered_df = df
     
-    # GPU 가속 계산 (대용량 데이터 처리 시뮬레이션)
-    if use_gpu and TORCH_AVAILABLE:
-        st.info("🚀 GPU 가속으로 대용량 계산을 수행합니다...")
+    # CPU 계산 (Streamlit Cloud 호환)
+    if True:  # 항상 CPU 계산
+        st.info("💻 CPU로 대용량 계산을 수행합니다...")
         
         # 가상의 대용량 데이터 생성 (GPU 가속 계산 시뮬레이션)
         large_data = np.random.randn(10000, 100).astype(np.float32)
         
-        with st.spinner("GPU에서 계산 중..."):
-            # GPU 가속 계산
-            gpu_result = gpu_accelerated_computation(large_data, 'matrix_multiply')
-            st.success(f"✅ GPU 계산 완료! 결과 크기: {gpu_result.shape}")
+        with st.spinner("CPU에서 계산 중..."):
+            # CPU 계산
+            cpu_result = gpu_accelerated_computation(large_data, 'matrix_multiply')
+            st.success(f"✅ CPU 계산 완료! 결과 크기: {cpu_result.shape}")
     
     # KPI 메트릭 (기존 로직)
     col1, col2, col3, col4 = st.columns(4)
