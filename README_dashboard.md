@@ -100,3 +100,4 @@ streamlit run app.py
 
 ## 라이센스
 이 프로젝트는 MIT 라이센스 하에 배포됩니다.
+
