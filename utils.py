@@ -159,11 +159,17 @@ def load_data() -> pd.DataFrame:
                 print("HTML 응답 감지, 다음 URL 시도")
                 continue
             
-            # 바이러스 스캔 경고 페이지 확인
-            content_preview = response.content[:1000].decode('utf-8', errors='ignore')
-            if 'virus scan' in content_preview.lower() or 'virus warning' in content_preview.lower():
-                print("바이러스 스캔 경고 페이지 감지, 다음 URL 시도")
-                continue
+            # Content-Length 확인
+            content_length = response.headers.get('content-length')
+            if content_length:
+                file_size = int(content_length)
+                print(f"예상 파일 크기: {file_size:,} bytes")
+                
+                if file_size < 1000:  # 너무 작으면 HTML 페이지일 가능성
+                    print("파일이 너무 작음, 다음 URL 시도")
+                    continue
+            else:
+                print("Content-Length 헤더 없음, 다운로드 후 확인")
             
             # 파일 다운로드
             temp_file = f"temp_data_{i}.csv"
@@ -171,14 +177,22 @@ def load_data() -> pd.DataFrame:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             
-            # 파일 크기 확인
-            file_size = os.path.getsize(temp_file)
-            print(f"다운로드된 파일 크기: {file_size} bytes")
+            # 실제 파일 크기 확인
+            actual_file_size = os.path.getsize(temp_file)
+            print(f"실제 다운로드된 파일 크기: {actual_file_size:,} bytes")
             
-            if file_size < 1000:  # 너무 작으면 HTML 페이지일 가능성
+            if actual_file_size < 1000:  # 너무 작으면 HTML 페이지일 가능성
                 print("파일이 너무 작음, 다음 URL 시도")
                 os.remove(temp_file)
                 continue
+            
+            # 바이러스 스캔 경고 페이지 확인 (파일 크기가 작을 때만)
+            if actual_file_size < 10000:  # 10KB 미만일 때만 HTML 내용 확인
+                content_preview = response.content[:1000].decode('utf-8', errors='ignore')
+                if 'virus scan' in content_preview.lower() or 'virus warning' in content_preview.lower():
+                    print("바이러스 스캔 경고 페이지 감지, 다음 URL 시도")
+                    os.remove(temp_file)
+                    continue
             
             # 파일 타입 감지 및 처리
             with open(temp_file, 'rb') as f:
