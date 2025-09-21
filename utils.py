@@ -109,6 +109,11 @@ def generate_sample_data() -> pd.DataFrame:
     df['ARPU'] = df['총이용금액_B0M'] / df['총이용건수_B0M']
     df['이용률'] = (df['총이용금액_B0M'] / df['카드이용한도액']) * 100
     
+    # AgeGroup 컬럼 생성
+    df['AgeGroup'] = pd.cut(df['Age'], 
+                           bins=[0, 20, 30, 40, 50, 60, 100], 
+                           labels=['20대미만', '20대', '30대', '40대', '50대', '60대이상'])
+    
     return df
 
 
@@ -261,6 +266,19 @@ def map_columns(df: pd.DataFrame) -> pd.DataFrame:
         df['연체여부'] = (df['연체잔액_B0M'] > 0).astype(int)
     elif '연체여부' in df.columns:
         df['연체여부'] = (df['연체여부'] > 0).astype(int)
+    
+    # AgeGroup 컬럼 생성
+    if 'Age' in df.columns:
+        try:
+            df['AgeGroup'] = pd.cut(df['Age'], 
+                                   bins=[0, 20, 30, 40, 50, 60, 100], 
+                                   labels=['20대미만', '20대', '30대', '40대', '50대', '60대이상'])
+        except:
+            # 기본 연령대 설정
+            df['AgeGroup'] = '30대'
+    else:
+        # Age 컬럼이 없으면 기본값 설정
+        df['AgeGroup'] = '30대'
     
     # 누락된 컬럼에 기본값 설정
     required_columns = ['총이용금액_B0M', '총이용건수_B0M', '연체여부', '카드이용한도액']
