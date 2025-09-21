@@ -414,6 +414,10 @@ def render_kpi_radar_chart(kpi_data: pd.DataFrame):
 
 def render_kpi_boxplot(df: pd.DataFrame):
     """KPI 박스플롯"""
+    # Segment 컬럼이 없으면 기본값 설정
+    if 'Segment' not in df.columns:
+        df['Segment'] = 'E'  # 기본 세그먼트
+    
     fig = px.box(
         df, 
         x='Segment', 
@@ -435,6 +439,10 @@ def render_kpi_boxplot(df: pd.DataFrame):
 
 def render_payment_method_chart(df: pd.DataFrame):
     """결제수단 비중 차트"""
+    # Segment 컬럼이 없으면 기본값 설정
+    if 'Segment' not in df.columns:
+        df['Segment'] = 'E'  # 기본 세그먼트
+    
     # 가상의 결제수단 데이터 생성
     payment_data = []
     
@@ -457,6 +465,14 @@ def render_payment_method_chart(df: pd.DataFrame):
                 '신판': 신판_비율.mean(),
                 '체크': 체크_비율.mean(),
                 '현금서비스': 현금서비스_비율.mean()
+            })
+        else:
+            # 세그먼트 데이터가 없으면 기본값 추가
+            payment_data.append({
+                'Segment': segment,
+                '신판': 60.0,
+                '체크': 25.0,
+                '현금서비스': 15.0
             })
     
     payment_df = pd.DataFrame(payment_data)
