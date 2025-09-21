@@ -267,6 +267,19 @@ def map_columns(df: pd.DataFrame) -> pd.DataFrame:
     elif '연체여부' in df.columns:
         df['연체여부'] = (df['연체여부'] > 0).astype(int)
     
+    # Segment 컬럼 확인 및 생성
+    if 'Segment' not in df.columns:
+        # 가상 세그먼트 생성 (EDA 결과 반영)
+        segment_probs = [0.0004, 0.00001, 0.053, 0.135, 0.811]  # A, B, C, D, E 비율
+        df['Segment'] = np.random.choice(['A', 'B', 'C', 'D', 'E'], len(df), p=segment_probs)
+    
+    # 세그먼트 카테고리화
+    try:
+        df['Segment'] = pd.Categorical(df['Segment'], categories=SEGMENT_ORDER, ordered=True)
+    except:
+        # 기본 세그먼트 설정
+        df['Segment'] = 'E'
+    
     # AgeGroup 컬럼 생성
     if 'Age' in df.columns:
         try:

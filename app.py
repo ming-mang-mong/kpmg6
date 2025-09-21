@@ -153,6 +153,14 @@ def render_kpi_analysis(df: pd.DataFrame):
     """주요 KPI 분석"""
     st.markdown("### 📈 주요 KPI 분석")
     
+    if df.empty:
+        st.warning("데이터가 없습니다.")
+        return
+    
+    if 'Segment' not in df.columns:
+        st.warning("Segment 컬럼이 없습니다.")
+        return
+    
     # KPI 계산
     kpi_data = calculate_kpi_metrics(df)
     
@@ -208,6 +216,9 @@ def render_kpi_analysis(df: pd.DataFrame):
 
 def calculate_kpi_metrics(df: pd.DataFrame) -> pd.DataFrame:
     """KPI 메트릭 계산"""
+    if df.empty or 'Segment' not in df.columns:
+        return pd.DataFrame()
+    
     # 기본 집계
     kpi_data = df.groupby('Segment').agg({
         'ID': 'nunique',
@@ -435,6 +446,10 @@ def render_kpi_boxplot(df: pd.DataFrame):
 
 def render_payment_method_chart(df: pd.DataFrame):
     """결제수단 비중 차트"""
+    if df.empty or 'Segment' not in df.columns:
+        st.warning("결제수단 데이터를 생성할 수 없습니다.")
+        return
+    
     # 가상의 결제수단 데이터 생성
     payment_data = []
     
