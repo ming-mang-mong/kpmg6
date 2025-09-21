@@ -121,7 +121,7 @@ def generate_sample_data() -> pd.DataFrame:
 def load_data() -> pd.DataFrame:
     """
     데이터 로드 및 기본 전처리
-    Google Drive에서 실제 데이터 로드 시도, 실패 시 샘플 데이터 생성
+    Google Drive에서만 데이터 로드 (더미 데이터 없음)
     """
     df = None
     
@@ -211,13 +211,11 @@ def load_data() -> pd.DataFrame:
                 import os
                 os.remove(temp_file)
             except Exception as e3:
-                # 모든 방법 실패 시 샘플 데이터 생성
-                print("⚠️ Google Drive에서 데이터를 로드할 수 없습니다. 샘플 데이터를 사용합니다.")
-                df = generate_sample_data()
+                # 모든 방법 실패 시 오류 발생
+                raise Exception("Google Drive에서 데이터를 로드할 수 없습니다. 모든 다운로드 방법이 실패했습니다.")
     
     if df is None or df.empty:
-        print("⚠️ 데이터 로드에 실패했습니다. 샘플 데이터를 사용합니다.")
-        df = generate_sample_data()
+        raise Exception("데이터 로드에 실패했습니다. Google Drive 파일을 확인해주세요.")
     
     # 중복 인덱스 제거
     df = df.reset_index(drop=True)

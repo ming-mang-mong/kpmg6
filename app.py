@@ -1468,18 +1468,22 @@ def main():
         st.markdown('<h1 class="main-header">💳 신용카드 세그먼트 분석 대시보드</h1>', 
                     unsafe_allow_html=True)
         
-        # 데이터 로드
-        with st.spinner("데이터를 로딩 중입니다..."):
+        # 데이터 로드 (로딩 메시지 없이)
+        try:
             df = load_data()
+        except Exception as e:
+            st.error("❌ 데이터를 로드할 수 없습니다.")
+            st.error(f"**오류:** {str(e)}")
+            st.info("""
+            **해결 방법:**
+            - Google Drive 링크를 확인해주세요.
+            - 인터넷 연결을 확인해주세요.
+            - 페이지를 새로고침해주세요.
+            """)
+            return
         
         if df.empty:
-            st.error("❌ 데이터를 로드할 수 없습니다.")
-            st.info("""
-            **데이터 로드 실패:**
-            - Google Drive 링크에서 데이터를 가져올 수 없습니다.
-            - 샘플 데이터 생성에도 실패했습니다.
-            - 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
-            """)
+            st.error("❌ 로드된 데이터가 비어있습니다.")
             return
     
         # 글로벌 필터 렌더링
@@ -1624,17 +1628,19 @@ def render_risk_delinquency(df: pd.DataFrame):
     else:
         filtered_df = df
     
-    # CPU 계산 (Streamlit Cloud 호환)
-    if True:  # 항상 CPU 계산
-        st.info("💻 CPU로 대용량 계산을 수행합니다...")
+    # CPU 최적화 계산 (Streamlit Cloud 호환)
+    with st.spinner("데이터 분석 중..."):
+        # 실제 데이터에 대한 최적화된 계산
+        segment_analysis = filtered_df.groupby('Segment').agg({
+            '총이용금액_B0M': ['sum', 'mean', 'std'],
+            '총이용건수_B0M': ['sum', 'mean'],
+            '연체여부': 'mean'
+        }).round(2)
         
-        # 가상의 대용량 데이터 생성 (GPU 가속 계산 시뮬레이션)
-        large_data = np.random.randn(10000, 100).astype(np.float32)
+        # 메모리 효율적인 계산
+        correlation_matrix = filtered_df[['총이용금액_B0M', '총이용건수_B0M', '연체여부']].corr()
         
-        with st.spinner("CPU에서 계산 중..."):
-            # CPU 계산
-            cpu_result = gpu_accelerated_computation(large_data, 'matrix_multiply')
-            st.success(f"✅ CPU 계산 완료! 결과 크기: {cpu_result.shape}")
+    st.success(f"✅ 분석 완료! {len(filtered_df):,}개 고객 데이터 처리됨")
     
     # KPI 메트릭 (기존 로직)
     col1, col2, col3, col4 = st.columns(4)
