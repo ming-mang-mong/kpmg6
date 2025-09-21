@@ -253,7 +253,7 @@ def render_kpi_cards(kpi_data: pd.DataFrame):
             segment_row = kpi_data[kpi_data['Segment'] == segment]
             
             with col:
-                if segment_row.empty or segment_row.iloc[0]['고객수'] < 10:  # 희소 데이터
+                if segment_row.empty or segment_row.iloc[0]['고객수'] < 1:  # 데이터가 없는 경우만
                     st.markdown(f"""
                     <div style="
                         padding: 1rem; 
