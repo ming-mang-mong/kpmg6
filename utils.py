@@ -116,27 +116,109 @@ def generate_sample_data() -> pd.DataFrame:
 def load_data() -> pd.DataFrame:
     """
     데이터 로드 및 기본 전처리
-    Streamlit Cloud 호환성을 위해 샘플 데이터 생성으로 폴백
+    Google Drive에서 실제 데이터 로드 시도, 실패 시 샘플 데이터 생성
     """
-    # Streamlit Cloud에서는 네트워크 제한으로 Google Drive 접근이 어려울 수 있음
-    # 따라서 샘플 데이터를 생성하여 사용
+    df = None
     
+    # 방법 1: gdown을 사용한 효율적인 다운로드
     try:
-        # 샘플 데이터 생성
+        import gdown
+        import os
+        
+        # 임시 파일로 다운로드
+        temp_file = "temp_data_file"
+        gdown.download(DATA_URL, temp_file, quiet=True)
+        
+        # 파일 타입 감지 및 처리
+        if os.path.exists(temp_file):
+            # 파일 확장자 확인
+            with open(temp_file, 'rb') as f:
+                header = f.read(4)
+            
+            # ZIP 파일인지 확인
+            if header.startswith(b'PK'):
+                import zipfile
+                
+                with zipfile.ZipFile(temp_file, 'r') as zip_file:
+                    # CSV 파일 찾기
+                    csv_files = [f for f in zip_file.namelist() if f.endswith('.csv')]
+                    if not csv_files:
+                        raise Exception("ZIP 파일에서 CSV 파일을 찾을 수 없습니다.")
+                    
+                    # 첫 번째 CSV 파일 읽기
+                    csv_file = csv_files[0]
+                    
+                    with zip_file.open(csv_file) as f:
+                        df = pd.read_csv(f, low_memory=False, encoding='utf-8')
+            else:
+                # CSV 파일 직접 읽기
+                df = pd.read_csv(temp_file, low_memory=False, encoding='utf-8')
+            
+            # 임시 파일 삭제
+            os.remove(temp_file)
+        else:
+            raise Exception("파일 다운로드에 실패했습니다.")
+            
+    except Exception as e1:
+        # 방법 2: requests를 사용한 스트리밍 다운로드
+        try:
+            import requests
+            
+            session = requests.Session()
+            response = session.get(DATA_URL, stream=True)
+            response.raise_for_status()
+            
+            # Content-Type 확인
+            content_type = response.headers.get('content-type', '')
+            if 'text/html' in content_type:
+                raise Exception("HTML response received")
+            
+            # 임시 파일로 저장
+            temp_file = "temp_data_stream.csv"
+            with open(temp_file, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            # 파일 읽기
+            df = pd.read_csv(temp_file, low_memory=False, encoding='utf-8')
+            
+            # 임시 파일 삭제
+            import os
+            os.remove(temp_file)
+        except Exception as e2:
+            # 방법 3: 직접 다운로드 URL 생성
+            try:
+                # Google Drive 직접 다운로드 URL
+                direct_url = "https://drive.usercontent.google.com/download?id=16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k&export=download&confirm=t"
+                
+                response = requests.get(direct_url, stream=True)
+                response.raise_for_status()
+                
+                # 임시 파일로 저장
+                temp_file = "temp_data.csv"
+                with open(temp_file, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                df = pd.read_csv(temp_file, low_memory=False, encoding='utf-8')
+                
+                # 임시 파일 삭제
+                import os
+                os.remove(temp_file)
+            except Exception as e3:
+                # 모든 방법 실패 시 샘플 데이터 생성
+                st.warning("⚠️ Google Drive에서 데이터를 로드할 수 없습니다. 샘플 데이터를 사용합니다.")
+                df = generate_sample_data()
+    
+    if df is None or df.empty:
+        st.warning("⚠️ 데이터 로드에 실패했습니다. 샘플 데이터를 사용합니다.")
         df = generate_sample_data()
-        
-        if df.empty:
-            return pd.DataFrame()
-        
-        # 중복 인덱스 제거
-        df = df.reset_index(drop=True)
-        
-        # 컬럼 매핑 적용
-        return map_columns(df)
-        
-    except Exception as e:
-        # 오류 발생 시 빈 DataFrame 반환
-        return pd.DataFrame()
+    
+    # 중복 인덱스 제거
+    df = df.reset_index(drop=True)
+    
+    # 컬럼 매핑 적용
+    return map_columns(df)
 
 
 def map_columns(df: pd.DataFrame) -> pd.DataFrame:
