@@ -137,6 +137,15 @@ def load_data() -> pd.DataFrame:
     import zipfile
     from io import BytesIO
     
+    # 로컬 테스트 모드 감지
+    local_test_mode = os.environ.get('STREAMLIT_LOCAL_TEST', 'false').lower() == 'true'
+    
+    if local_test_mode:
+        print("로컬 테스트 모드: 샘플 데이터 사용")
+        df = generate_sample_data()
+        df = map_columns(df)
+        return df
+    
     df = None
     last_error = None
     
@@ -234,12 +243,20 @@ def load_data() -> pd.DataFrame:
             continue
     
     if df is None or df.empty:
-        error_msg = f"Google Drive에서 데이터를 로드할 수 없습니다.\n"
-        error_msg += f"시도한 URL 수: {len(DOWNLOAD_URLS)}\n"
-        error_msg += f"마지막 오류: {str(last_error) if last_error else '알 수 없음'}\n"
-        error_msg += f"파일 ID: {FILE_ID}\n"
-        error_msg += "Google Drive 링크를 확인해주세요: https://drive.google.com/file/d/16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k/view?usp=sharing"
-        raise Exception(error_msg)
+        # 로컬 테스트 모드 감지
+        import os
+        local_test_mode = os.environ.get('STREAMLIT_LOCAL_TEST', 'false').lower() == 'true'
+        
+        if local_test_mode:
+            print("로컬 테스트 모드: 샘플 데이터 사용")
+            df = generate_sample_data()
+        else:
+            error_msg = f"Google Drive에서 데이터를 로드할 수 없습니다.\n"
+            error_msg += f"시도한 URL 수: {len(DOWNLOAD_URLS)}\n"
+            error_msg += f"마지막 오류: {str(last_error) if last_error else '알 수 없음'}\n"
+            error_msg += f"파일 ID: {FILE_ID}\n"
+            error_msg += "Google Drive 링크를 확인해주세요: https://drive.google.com/file/d/16KpMgqyfVtOaOX30kqPCu1pc9T3d7f-k/view?usp=sharing"
+            raise Exception(error_msg)
     
     # 중복 인덱스 제거
     df = df.reset_index(drop=True)
